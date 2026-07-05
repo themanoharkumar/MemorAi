@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}MemorAI — Smart Spaced Repetition Decks{% endblock %}
+{% block description %}Accelerate your learning journey. Turn any study material into smart flashcards powered by advanced spaced repetition. No install required.{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div style="background: radial-gradient(circle at 50% -20%, rgba(108, 99, 255, 0.15) 0%, transparent 60%); padding: 5rem 0 3rem">
+  <div class="container" style="max-width: 1000px; text-align: center">
+    <div class="animate-fade-in" style="margin-bottom: 3.5rem">
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(108, 99, 255, 0.08); border: 1px solid rgba(108, 99, 255, 0.18); border-radius: 100px; padding: 0.4rem 1rem; margin-bottom: 1.5rem">
+        <span style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase">Next-Gen Spaced Repetition</span>
+      </div>
+      
+      <h1 style="font-size: clamp(2.25rem, 6vw, 4rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.25rem">
+        Lock knowledge into your<br><span class="text-gradient">long-term memory</span>
+      </h1>
+      
+      <p style="font-size: 1.15rem; color: rgba(240, 240, 255, 0.6); max-width: 580px; margin: 0 auto 2.5rem; line-height: 1.7">
+        Upload your study notes, textbooks, or PDFs. Our smart processor instantly builds high-retention decks scheduled perfectly to the SM-2 algorithm.
+      </p>
+
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap">
+        <a href="/signup" class="btn btn-primary btn-lg">Create Free Account</a>
+        <a href="/login" class="btn btn-secondary btn-lg">Sign In</a>
+      </div>
+    </div>
+
+    <!-- Live Interactive Mock Flashcard -->
+    <div class="animate-slide-up" style="animation-delay: 0.15s; margin-bottom: 5rem">
+      <div style="text-align: center; margin-bottom: 1.5rem">
+        <span style="font-size: 0.75rem; color: rgba(240,240,255,0.4); text-transform: uppercase; letter-spacing: 0.1em">Interactive Preview</span>
+      </div>
+      <div class="flashcard-scene" style="max-width: 480px; margin: 0 auto">
+        <div class="flashcard" id="mock-card" onclick="this.classList.toggle('flipped')" role="button" tabindex="0" aria-label="Interactive demo flashcard. Click to flip.">
+          <!-- Front -->
+          <div class="flashcard-face flashcard-front">
+            <div class="flashcard-label">Front</div>
+            <div class="flashcard-question" style="font-size: 1.15rem">What is the "Spacing Effect" in cognitive psychology?</div>
+            <div style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--color-primary); font-family: var(--font-mono)">CLICK TO REVEAL</div>
+          </div>
+          <!-- Back -->
+          <div class="flashcard-face flashcard-back">
+            <div class="flashcard-label">Back</div>
+            <div class="flashcard-answer" style="font-size: 0.95rem; line-height: 1.6">
+              The phenomenon where learning is greater when studying is spread out over time (spaced presentation), rather than crammed into a single session.
+            </div>
+            <div style="margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: center">
+              <span class="badge badge-success">SM-2 Scheduled</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="grid-3" style="text-align: left; gap: 1.5rem">
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 1rem">⚡</div>
+        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem">Automated Card Generation</h3>
+        <p style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.5); line-height: 1.6">
+          Our advanced parsing engine extracts definitions, practical applications, conceptual relationships, and edge cases.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 1rem">📅</div>
+        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem">Optimal Recall Intervals</h3>
+        <p style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.5); line-height: 1.6">
+          The SM-2 spaced repetition algorithm adjusts due dates individually based on your feedback (Again, Hard, Good, Easy).
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 2rem; margin-bottom: 1rem">📊</div>
+        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem">Progress Analytics</h3>
+        <p style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.5); line-height: 1.6">
+          Visualize your active streak, monthly consistency calendar, and mastery levels inside a centralized dashboard.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

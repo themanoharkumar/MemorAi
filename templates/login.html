@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Login — MemorAI{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 440px; padding-top: 6rem">
+  <div class="card animate-fade-in" style="padding: 2.5rem 2rem">
+    <div style="text-align: center; margin-bottom: 2rem">
+      <h1 style="font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem" class="text-gradient">Welcome back</h1>
+      <p style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.45)">Sign in to access your study decks</p>
+    </div>
+
+    <form id="login-form" style="display: flex; flex-direction: column; gap: 1.25rem">
+      <div>
+        <label for="username" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em">Username or Email</label>
+        <input type="text" id="username" class="input" placeholder="e.g. study_hero" required />
+      </div>
+
+      <div>
+        <label for="password" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em">Password</label>
+        <input type="password" id="password" class="input" placeholder="••••••••" required />
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem" id="submit-btn">
+        Sign In
+      </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: rgba(240, 240, 255, 0.4)">
+      Don't have an account? <a href="/signup" style="color: var(--color-primary); font-weight: 500; text-decoration: underline">Sign up</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Invalid username or password.');
+    }
+
+    toast.success('Successfully logged in!');
+    setTimeout(() => { window.location.href = '/'; }, 500);
+  } catch (err) {
+    toast.error(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+</script>
+{% endblock %}

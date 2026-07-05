@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Study Session — MemorAI{% endblock %}
+{% block description %}Study your flashcard deck with spaced repetition.{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:720px">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:2rem">
+    <a href="/decks/{{ deck_id }}" class="btn btn-secondary btn-sm" aria-label="Back to deck">← Back</a>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+        <h1 id="deck-title" style="font-size:1.1rem;font-weight:700;font-family:var(--font-display)">Loading...</h1>
+        <span id="session-progress" style="font-size:0.8rem;font-family:var(--font-mono);color:rgba(240,240,255,0.4)">0 / 0</span>
+      </div>
+      <div class="progress-bar-track" style="margin-top:0.5rem">
+        <div id="study-progress-bar" class="progress-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="study-loading" class="empty-state">
+    <div class="spinner" style="margin:0 auto 1rem"></div>
+    <p>Loading cards...</p>
+  </div>
+
+  <!-- Empty state (no due cards) -->
+  <div id="study-empty" class="empty-state" style="display:none">
+    <div class="empty-state-icon">🎉</div>
+    <h2 class="empty-state-title">You're all caught up!</h2>
+    <p style="margin-bottom:1.5rem">No cards are due for review right now. Check back later.</p>
+    <a href="/decks/{{ deck_id }}" class="btn btn-primary">Back to Deck</a>
+  </div>
+
+  <!-- Study area -->
+  <div id="study-area" style="display:none">
+
+    <!-- Card meta -->
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;justify-content:center">
+      <span id="card-topic" class="badge badge-neutral"></span>
+      <span id="card-type" class="badge badge-primary"></span>
+    </div>
+
+    <!-- 3D Flashcard -->
+    <div class="flashcard-scene">
+      <div class="flashcard" id="flashcard" role="button" tabindex="0" aria-label="Flashcard - click to flip">
+        <!-- Front -->
+        <div class="flashcard-face flashcard-front">
+          <div class="flashcard-label">Question</div>
+          <div class="flashcard-question" id="card-question"></div>
+        </div>
+        <!-- Back -->
+        <div class="flashcard-face flashcard-back">
+          <div class="flashcard-label">Answer</div>
+          <div class="flashcard-answer" id="card-answer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flip hint -->
+    <p id="flip-hint" style="text-align:center;font-size:0.8rem;color:rgba(240,240,255,0.3);margin-top:1rem">
+      Click card or press <kbd style="background:var(--color-surface-3);padding:0.15rem 0.4rem;border-radius:4px;font-family:var(--font-mono);font-size:0.7rem">Space</kbd> to reveal answer
+    </p>
+
+    <!-- Rating buttons -->
+    <div id="rating-section" class="rating-grid" style="display:none" aria-label="Rate your recall">
+      <button class="rating-btn" data-rating="0" aria-label="Again - press 1">
+        <span class="rating-label" style="color:var(--color-danger)">Again</span>
+        <span class="rating-interval" id="preview-0">—</span>
+        <span class="rating-key">Press 1</span>
+      </button>
+      <button class="rating-btn" data-rating="1" aria-label="Hard - press 2">
+        <span class="rating-label" style="color:var(--color-warning)">Hard</span>
+        <span class="rating-interval" id="preview-1">—</span>
+        <span class="rating-key">Press 2</span>
+      </button>
+      <button class="rating-btn" data-rating="2" aria-label="Good - press 3">
+        <span class="rating-label" style="color:var(--color-primary)">Good</span>
+        <span class="rating-interval" id="preview-2">—</span>
+        <span class="rating-key">Press 3</span>
+      </button>
+      <button class="rating-btn" data-rating="3" aria-label="Easy - press 4">
+        <span class="rating-label" style="color:var(--color-success)">Easy</span>
+        <span class="rating-interval" id="preview-3">—</span>
+        <span class="rating-key">Press 4</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Session done screen -->
+  <div id="session-done" style="display:none;flex-direction:column;align-items:center;text-align:center;padding:3rem 0">
+    <div style="font-size:3rem;margin-bottom:1rem">🏆</div>
+    <h2 style="font-family:var(--font-display);font-size:1.75rem;font-weight:700;margin-bottom:0.5rem">Session Complete!</h2>
+    <p style="color:rgba(240,240,255,0.5);margin-bottom:1rem">Great work — your reviews have been saved.</p>
+    <div id="session-stats"></div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;margin-top:1rem">
+      <a href="/decks/{{ deck_id }}/study" class="btn btn-primary">Study Again</a>
+      <a href="/decks/{{ deck_id }}" class="btn btn-secondary">Back to Deck</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.DECK_ID = "{{ deck_id }}";
+  // Load deck title
+  apiGet(`/api/decks?id={{ deck_id }}`).then(data => {
+    const el = document.getElementById('deck-title');
+    if (el && data.deck) el.textContent = data.deck.title;
+  }).catch(() => {});
+
+  // Update progress bar when cards load
+  const origRender = window._renderCard;
+</script>
+<script src="/static/js/flashcard.js"></script>
+{% endblock %}

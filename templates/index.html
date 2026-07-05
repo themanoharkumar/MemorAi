@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}MemorAI — Upload Study Material{% endblock %}
+{% block description %}Upload a study document to generate flashcards and start studying.{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; padding-top: 2rem">
+
+  <!-- Interactive Welcome & Quick Stats Header -->
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem" class="animate-fade-in">
+    <div>
+      <h1 style="font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.25rem">
+        Welcome back, <span class="text-gradient">@{{ user.username }}</span>
+      </h1>
+      <p style="font-size: 0.9rem; color: rgba(240, 240, 255, 0.45)">Ready to absorb some new knowledge today?</p>
+    </div>
+
+    <!-- Quick stats badge -->
+    <div style="display: flex; gap: 0.75rem; align-items: center">
+      <div style="background: rgba(108, 99, 255, 0.08); border: 1px solid rgba(108, 99, 255, 0.15); border-radius: var(--radius-md); padding: 0.5rem 1rem; text-align: center">
+        <div style="font-size: 1.15rem; font-family: var(--font-display); font-weight: 700; color: var(--color-primary)" id="header-due">—</div>
+        <div style="font-size: 0.65rem; text-transform: uppercase; color: rgba(240,240,255,0.4); letter-spacing: 0.05em">Due Today</div>
+      </div>
+      <div style="background: rgba(0, 229, 160, 0.08); border: 1px solid rgba(0, 229, 160, 0.15); border-radius: var(--radius-md); padding: 0.5rem 1rem; text-align: center">
+        <div style="font-size: 1.15rem; font-family: var(--font-display); font-weight: 700; color: var(--color-success)" id="header-streak">—</div>
+        <div style="font-size: 0.65rem; text-transform: uppercase; color: rgba(240,240,255,0.4); letter-spacing: 0.05em">Active Streak</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Upload Card -->
+  <div class="card animate-slide-up" style="animation-delay: 0.05s; margin-bottom: 3rem; background: linear-gradient(135deg, var(--color-surface-1), rgba(15,15,26,0.6))">
+    <div style="margin-bottom: 1.25rem">
+      <label for="deck-title" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em">Deck Title (optional)</label>
+      <input type="text" id="deck-title" class="input" placeholder="Name auto-extracted from file name..." style="max-width: 100%" />
+    </div>
+
+    <!-- Drop zone -->
+    <div class="upload-zone" id="upload-zone" role="button" aria-label="Upload PDF document" tabindex="0">
+      <input type="file" id="file-input" accept=".pdf" aria-label="Select PDF file" />
+      <div style="pointer-events: none">
+        <div class="upload-icon" style="font-size: 3rem; margin-bottom: 1rem">📤</div>
+        <h2 class="upload-title" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem">Drag your study PDF here</h2>
+        <p class="upload-subtitle" style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.4)">or click to browse local files · Max 20MB</p>
+      </div>
+    </div>
+
+    <!-- Upload button -->
+    <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end">
+      <button id="upload-btn" class="btn btn-primary btn-lg" disabled aria-label="Generate flashcards">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        Generate Decks
+      </button>
+    </div>
+  </div>
+
+  <!-- Interactive Quick Start: Recent Decks Section -->
+  <div class="animate-fade-in" style="animation-delay: 0.15s; margin-bottom: 2rem">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem">
+      <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4)">Recent Decks</h2>
+      <a href="/decks" style="font-size: 0.8rem; color: var(--color-primary); text-decoration: underline">View all decks</a>
+    </div>
+    
+    <div id="recent-decks-grid" class="grid-3">
+      <!-- Skeleton cards -->
+      <div class="card" style="opacity: 0.4; height: 120px"></div>
+      <div class="card" style="opacity: 0.4; height: 120px"></div>
+      <div class="card" style="opacity: 0.4; height: 120px"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Ingestion overlay -->
+<div id="ingestion-overlay" style="display: none" class="ingestion-overlay" role="dialog" aria-live="polite" aria-label="Processing study document">
+  <div class="ingestion-card">
+    <div style="font-size: 2.5rem; margin-bottom: 1.5rem">⚡</div>
+    <h2 style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem">Generating study deck</h2>
+    <p style="font-size: 0.875rem; color: rgba(240, 240, 255, 0.45); margin-bottom: 2rem">Analyzing PDF document and creating spaced repetition cards...</p>
+
+    <div id="progress-status" style="font-size: 0.9rem; color: rgba(240, 240, 255, 0.7); margin-bottom: 1rem; min-height: 1.3em">Uploading...</div>
+    <div class="progress-bar-track" style="margin-bottom: 0.75rem">
+      <div id="progress-bar" class="progress-bar-fill" style="width: 5%"></div>
+    </div>
+    <div id="progress-eta" style="font-size: 0.8rem; color: rgba(240, 240, 255, 0.35); font-family: var(--font-mono)"></div>
+    <div id="progress-detail" style="font-size: 0.8rem; color: rgba(240, 240, 255, 0.35); margin-top: 0.5rem"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/upload.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load global stats for header
+  try {
+    const stats = await apiGet('/api/stats/global');
+    document.getElementById('header-due').textContent = stats.due_today;
+    document.getElementById('header-streak').textContent = `${stats.streak}d`;
+  } catch {}
+
+  // Load recent decks
+  try {
+    const data = await apiGet('/api/decks');
+    const recentGrid = document.getElementById('recent-decks-grid');
+    const decks = (data.decks || []).slice(0, 3);
+    
+    if (decks.length === 0) {
+      recentGrid.innerHTML = `
+        <div style="grid-column: span 3; text-align: center; padding: 2rem; color: rgba(240,240,255,0.3); font-size: 0.9rem">
+          No study decks yet. Upload a PDF above to create one.
+        </div>`;
+      return;
+    }
+
+    recentGrid.innerHTML = decks.map(d => {
+      const studied = relativeDate(d.last_studied);
+      return `
+        <div class="card" onclick="window.location.href='/decks/${d.id}'" style="cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px" role="button" tabindex="0" aria-label="Open deck: ${d.title}">
+          <div>
+            <h3 style="font-size: 0.95rem; font-weight: 700; font-family: var(--font-display); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical">${escHtml(d.title)}</h3>
+            <span class="badge badge-primary" style="margin-top: 0.5rem">${d.card_count} cards</span>
+          </div>
+          <div style="font-size: 0.72rem; color: rgba(240, 240, 255, 0.35); margin-top: 0.5rem">
+            Studied: ${studied}
+          </div>
+        </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('recent-decks-grid').innerHTML = '';
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+});
+</script>
+{% endblock %}

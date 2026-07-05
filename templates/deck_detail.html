@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Deck Detail — MemorAI{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+
+  <!-- Back + title -->
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap">
+    <a href="/decks" class="btn btn-secondary btn-sm">← All Decks</a>
+    <div style="flex: 1">
+      <h1 id="deck-title" class="page-title">Loading...</h1>
+      <p id="deck-meta" class="page-subtitle"></p>
+    </div>
+    <a href="/decks/{{ deck_id }}/study" id="study-btn" class="btn btn-primary" style="display: none">
+      Study Now →
+    </a>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid-4" style="margin-bottom: 2rem" id="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Mastered</div>
+      <div class="stat-value" id="stat-mastered" style="color: var(--color-success)">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Shaky</div>
+      <div class="stat-value" id="stat-shaky" style="color: var(--color-warning)">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">New</div>
+      <div class="stat-value" id="stat-new" style="color: var(--color-primary)">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Due Today</div>
+      <div class="stat-value" id="stat-due" style="color: var(--color-secondary)">—</div>
+    </div>
+  </div>
+
+  <!-- Mastery ring + schedule row -->
+  <div class="grid-2" style="margin-bottom: 2rem">
+    <!-- Mastery ring -->
+    <div class="card">
+      <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4); margin-bottom: 1.25rem">Mastery Breakdown</h2>
+      <div style="display: flex; align-items: center; gap: 2rem; justify-content: center">
+        <svg id="mastery-svg" width="120" height="120" viewBox="0 0 120 120" style="flex-shrink: 0">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="var(--color-surface-3)" stroke-width="12"/>
+          <circle id="ring-mastered" cx="60" cy="60" r="48" fill="none" stroke="var(--color-success)" stroke-width="12" stroke-dasharray="0 302" stroke-linecap="round" transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease"/>
+          <circle id="ring-shaky" cx="60" cy="60" r="48" fill="none" stroke="var(--color-warning)" stroke-width="12" stroke-dasharray="0 302" stroke-linecap="round" transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease; stroke-dashoffset: 0"/>
+          <text x="60" y="55" text-anchor="middle" fill="var(--color-foreground)" font-family="Syne,sans-serif" font-size="20" font-weight="700" id="ring-pct">—</text>
+          <text x="60" y="73" text-anchor="middle" fill="rgba(240, 240, 255, 0.4)" font-family="DM Sans,sans-serif" font-size="11">mastered</text>
+        </svg>
+        <div style="display: flex; flex-direction: column; gap: 0.6rem">
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-success)"></div><span style="font-size: 0.8rem" id="legend-mastered">— Mastered</span></div>
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-warning)"></div><span style="font-size: 0.8rem" id="legend-shaky">— Shaky</span></div>
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-surface-3)"></div><span style="font-size: 0.8rem" id="legend-new">— New</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming schedule -->
+    <div class="card">
+      <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4); margin-bottom: 1.25rem">Upcoming Reviews</h2>
+      <div id="schedule-list" style="display: flex; flex-direction: column; gap: 0.6rem">
+        <div style="color: rgba(240, 240, 255, 0.3); font-size: 0.85rem">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards list -->
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem">
+      <div style="display: flex; align-items: center; gap: 1rem">
+        <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4)">All Cards</h2>
+        <button onclick="openAddCardModal()" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem">+ Add Card</button>
+      </div>
+      <input type="text" id="card-search" class="input" placeholder="Search cards..." style="max-width: 240px" aria-label="Search cards" />
+    </div>
+    <div id="cards-list" style="display: flex; flex-direction: column; gap: 0.5rem">
+      <div style="color: rgba(240, 240, 255, 0.3); font-size: 0.85rem">Loading cards...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Add Card Modal ── -->
+<div id="add-card-modal" class="ingestion-overlay" style="display: none" role="dialog" aria-modal="true" aria-label="Add custom card">
+  <div class="card" style="max-width: 500px; width: 100%; background: var(--color-surface-1)">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem">
+      <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700">Add custom card</h2>
+      <button onclick="closeAddCardModal()" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem">✕</button>
+    </div>
+
+    <form id="add-card-form" style="display: flex; flex-direction: column; gap: 1rem">
+      <div>
+        <label for="add-front" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Front (Question)</label>
+        <textarea id="add-front" class="input" rows="3" placeholder="At least 10 characters..." required></textarea>
+      </div>
+
+      <div>
+        <label for="add-back" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Back (Answer)</label>
+        <textarea id="add-back" class="input" rows="3" placeholder="At least 10 characters..." required></textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem">
+        <div>
+          <label for="add-topic" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Topic</label>
+          <input type="text" id="add-topic" class="input" value="General" required />
+        </div>
+        <div>
+          <label for="add-type" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Card Type</label>
+          <select id="add-type" class="input" style="height: 38px">
+            <option value="definition">Definition</option>
+            <option value="application">Application</option>
+            <option value="relationship">Relationship</option>
+            <option value="edge_case">Edge Case</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%">Save Flashcard</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── Edit Card Modal ── -->
+<div id="edit-card-modal" class="ingestion-overlay" style="display: none" role="dialog" aria-modal="true" aria-label="Edit card">
+  <div class="card" style="max-width: 500px; width: 100%; background: var(--color-surface-1)">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem">
+      <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700">Edit Flashcard</h2>
+      <button onclick="closeEditCardModal()" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem">✕</button>
+    </div>
+
+    <form id="edit-card-form" style="display: flex; flex-direction: column; gap: 1rem">
+      <input type="hidden" id="edit-id" />
+      <div>
+        <label for="edit-front" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Front (Question)</label>
+        <textarea id="edit-front" class="input" rows="3" required></textarea>
+      </div>
+
+      <div>
+        <label for="edit-back" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Back (Answer)</label>
+        <textarea id="edit-back" class="input" rows="3" required></textarea>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem">
+        <div>
+          <label for="edit-topic" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Topic</label>
+          <input type="text" id="edit-topic" class="input" required />
+        </div>
+        <div>
+          <label for="edit-type" style="display: block; font-size: 0.75rem; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.25rem">Card Type</label>
+          <select id="edit-type" class="input" style="height: 38px">
+            <option value="definition">Definition</option>
+            <option value="application">Application</option>
+            <option value="relationship">Relationship</option>
+            <option value="edge_case">Edge Case</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%">Save Changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DECK_ID = "{{ deck_id }}";
+let allCards = [];
+
+// Global trigger functions for onclick attributes
+function openAddCardModal() { document.getElementById('add-card-modal').style.display = 'flex'; }
+function closeAddCardModal() { document.getElementById('add-card-modal').style.display = 'none'; }
+function openEditCardModal(cardId) {
+  const card = allCards.find(c => c.id === cardId);
+  if (!card) return;
+  document.getElementById('edit-id').value = card.id;
+  document.getElementById('edit-front').value = card.front;
+  document.getElementById('edit-back').value = card.back;
+  document.getElementById('edit-topic').value = card.topic;
+  document.getElementById('edit-type').value = card.type;
+  document.getElementById('edit-card-modal').style.display = 'flex';
+}
+function closeEditCardModal() { document.getElementById('edit-card-modal').style.display = 'none'; }
+
+async function deleteCard(cardId) {
+  if (!confirm('Are you sure you want to delete this flashcard?')) return;
+  try {
+    await apiDelete(`/api/decks/card?card_id=${cardId}`);
+    toast.success('Flashcard deleted.');
+    await loadDeck();
+  } catch (err) {
+    toast.error('Failed to delete card.');
+  }
+}
+
+async function loadDeck() {
+  try {
+    const [deckData, statsData, scheduleData] = await Promise.all([
+      apiGet(`/api/decks?id=${DECK_ID}`),
+      apiGet(`/api/stats?deck_id=${DECK_ID}`),
+      apiGet(`/api/schedule?deck_id=${DECK_ID}`),
+    ]);
+
+    const deck = deckData.deck;
+    allCards = deck.cards || [];
+
+    // Title + meta
+    document.title = `${deck.title} — MemorAI`;
+    document.getElementById('deck-title').textContent = deck.title;
+    document.getElementById('deck-meta').textContent =
+      `${allCards.length} cards · Created ${new Date(deck.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · Last studied: ${relativeDate(deck.last_studied)}`;
+    
+    const studyBtn = document.getElementById('study-btn');
+    if (studyBtn) {
+      if (statsData.due_today > 0) {
+        studyBtn.style.display = 'inline-flex';
+        studyBtn.textContent = `Study Now (${statsData.due_today}) →`;
+      } else {
+        studyBtn.style.display = 'none';
+      }
+    }
+
+    // Stats
+    document.getElementById('stat-mastered').textContent = statsData.mastered;
+    document.getElementById('stat-shaky').textContent = statsData.shaky;
+    document.getElementById('stat-new').textContent = statsData.new_cards;
+    document.getElementById('stat-due').textContent = statsData.due_today;
+
+    // Mastery ring
+    const total = statsData.total || 1;
+    const circ = 2 * Math.PI * 48;
+    const mastPct = statsData.mastered / total;
+    const shakPct = statsData.shaky / total;
+    const mastDash = mastPct * circ;
+    const shakDash = shakPct * circ;
+    document.getElementById('ring-mastered').setAttribute('stroke-dasharray', `${mastDash} ${circ}`);
+    document.getElementById('ring-shaky').setAttribute('stroke-dasharray', `${shakDash} ${circ}`);
+    document.getElementById('ring-shaky').style.strokeDashoffset = `-${mastDash}`;
+    document.getElementById('ring-pct').textContent = `${statsData.mastery_percent}%`;
+    document.getElementById('legend-mastered').textContent = `${statsData.mastered} Mastered`;
+    document.getElementById('legend-shaky').textContent = `${statsData.shaky} Shaky`;
+    document.getElementById('legend-new').textContent = `${statsData.new_cards} New`;
+
+    // Schedule
+    const schedList = document.getElementById('schedule-list');
+    if (!scheduleData.schedule.length) {
+      schedList.innerHTML = '<div style="color:rgba(240,240,255,0.3);font-size:0.85rem">No upcoming reviews.</div>';
+    } else {
+      schedList.innerHTML = scheduleData.schedule.slice(0,6).map(s => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+          <span style="font-size:0.85rem;color:${s.is_today?'var(--color-primary)':'rgba(240,240,255,0.7)'}">${s.label}</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <div style="height:6px;background:rgba(108,99,255,0.2);border-radius:100px;width:${Math.min(100, s.count * 3)}px"><div style="height:100%;background:var(--color-primary);border-radius:100px;width:100%"></div></div>
+            <span style="font-size:0.75rem;font-family:var(--font-mono);color:rgba(240,240,255,0.4)">${s.count}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    // Cards list
+    renderCards(allCards);
+
+  } catch (err) {
+    console.error(err);
+    toast.error('Failed to load deck data.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadDeck();
+
+  // Card search
+  document.getElementById('card-search').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    const filtered = q ? allCards.filter(c => c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q) || c.topic.toLowerCase().includes(q)) : allCards;
+    renderCards(filtered);
+  });
+
+  // Add Card Submission
+  document.getElementById('add-card-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const front = document.getElementById('add-front').value;
+    const back = document.getElementById('add-back').value;
+    const topic = document.getElementById('add-topic').value;
+    const type = document.getElementById('add-type').value;
+
+    try {
+      await apiPost('/api/decks/card', {
+        deck_id: DECK_ID,
+        front,
+        back,
+        topic,
+        type,
+      });
+      toast.success('Card added successfully!');
+      closeAddCardModal();
+      document.getElementById('add-card-form').reset();
+      document.getElementById('add-topic').value = 'General';
+      await loadDeck();
+    } catch (err) {
+      toast.error(err.message || 'Failed to add card.');
+    }
+  });
+
+  // Edit Card Submission
+  document.getElementById('edit-card-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cardId = document.getElementById('edit-id').value;
+    const front = document.getElementById('edit-front').value;
+    const back = document.getElementById('edit-back').value;
+    const topic = document.getElementById('edit-topic').value;
+    const type = document.getElementById('edit-type').value;
+
+    try {
+      await fetch('/api/decks/card', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: cardId, front, back, topic, type })
+      });
+      toast.success('Card updated successfully!');
+      closeEditCardModal();
+      await loadDeck();
+    } catch (err) {
+      toast.error('Failed to update card.');
+    }
+  });
+});
+
+function renderCards(cards) {
+  const list = document.getElementById('cards-list');
+  if (!cards.length) { list.innerHTML = '<div style="color:rgba(240,240,255,0.3);font-size:0.85rem">No cards found.</div>'; return; }
+  const typeColors = {definition:'var(--color-primary)',application:'var(--color-secondary)',relationship:'var(--color-warning)',edge_case:'var(--color-danger)'};
+  list.innerHTML = cards.map(card => {
+    const dueDate = new Date(card.due_date);
+    const isPast = dueDate <= new Date();
+    return `
+    <details style="background:var(--color-surface-2);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-md);overflow:hidden">
+      <summary style="padding:0.85rem 1rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:1rem;list-style:none;-webkit-appearance:none">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.875rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(card.front)}</div>
+          <div style="display:flex;gap:0.4rem;margin-top:0.3rem;flex-wrap:wrap">
+            <span class="badge" style="background:rgba(${typeColors[card.type]?.replace(/var\(--color-/,'').replace(/\)/,'') || '108,99,255'}, 0.15);color:${typeColors[card.type] || 'var(--color-primary)'}">${formatCardType(card.type)}</span>
+            <span class="badge badge-neutral">${escHtml(card.topic)}</span>
+            <span class="badge ${isPast?'badge-warning':'badge-success'}">${isPast?'Due':'Due '+relativeDate(card.due_date)}</span>
+          </div>
+        </div>
+        <span style="color:rgba(240,240,255,0.3);flex-shrink:0">▾</span>
+      </summary>
+      <div style="padding:0 1rem 1rem;border-top:1px solid rgba(255,255,255,0.04)">
+        <p style="font-size:0.875rem;color:rgba(240,240,255,0.7);line-height:1.6;padding-top:0.75rem">${escHtml(card.back)}</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;gap:0.75rem">
+          <div style="display:flex;gap:1rem;font-size:0.75rem;font-family:var(--font-mono);color:rgba(240,240,255,0.3)">
+            <span>Reps: ${card.repetitions}</span>
+            <span>EF: ${card.ease_factor.toFixed(2)}</span>
+            <span>Interval: ${card.interval}d</span>
+          </div>
+          <div style="display:flex;gap:0.5rem">
+            <button onclick="openEditCardModal('${card.id}')" class="btn btn-secondary btn-sm" style="padding:0.2rem 0.5rem;font-size:0.7rem">Edit</button>
+            <button onclick="deleteCard('${card.id}')" class="btn btn-danger btn-sm" style="padding:0.2rem 0.5rem;font-size:0.7rem">Delete</button>
+          </div>
+        </div>
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

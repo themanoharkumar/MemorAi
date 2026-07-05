@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Study Calendar — MemorAI{% endblock %}
+{% block description %}Visualize your learning journey with a monthly calendar heatmap showing past retention and upcoming reviews.{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+    <div class="page-header" style="margin-bottom:0">
+      <h1 class="page-title">Study Calendar</h1>
+      <p class="page-subtitle">Track your learning journey across time.</p>
+    </div>
+    <!-- Deck filter -->
+    <select id="deck-filter" class="input" style="max-width:220px" aria-label="Filter by deck">
+      <option value="">All decks</option>
+    </select>
+  </div>
+
+  <!-- Today stats -->
+  <div class="grid-4" style="margin-bottom:2rem" id="today-stats">
+    <div class="stat-card"><div class="stat-label">Due Today</div><div class="stat-value" id="today-due" style="color:var(--color-secondary)">—</div></div>
+    <div class="stat-card"><div class="stat-label">Reviewed Today</div><div class="stat-value" id="today-reviewed" style="color:var(--color-success)">—</div></div>
+    <div class="stat-card"><div class="stat-label">Due This Week</div><div class="stat-value" id="today-week" style="color:var(--color-primary)">—</div></div>
+    <div class="stat-card"><div class="stat-label">Due This Month</div><div class="stat-value" id="today-month" style="color:rgba(240,240,255,0.6)">—</div></div>
+  </div>
+
+  <!-- Calendar card -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <!-- Month navigation -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <button id="prev-month" class="btn btn-secondary btn-sm" aria-label="Previous month">←</button>
+      <h2 id="month-label" style="font-family:var(--font-display);font-size:1.15rem;font-weight:700">Loading...</h2>
+      <button id="next-month" class="btn btn-secondary btn-sm" aria-label="Next month">→</button>
+    </div>
+
+    <!-- Weekday headers -->
+    <div class="calendar-grid" style="margin-bottom:0.5rem">
+      {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}
+        <div style="text-align:center;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:rgba(240,240,255,0.3);padding:0.25rem">{{ d }}</div>
+      {% endfor %}
+    </div>
+
+    <!-- Calendar days grid -->
+    <div class="calendar-grid" id="calendar-days"></div>
+  </div>
+
+  <!-- Streak bar -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h2 style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:rgba(240,240,255,0.4)">30-Day Activity</h2>
+      <div style="font-size:0.8rem;color:rgba(240,240,255,0.4)">Streak: <span id="streak-count" style="color:var(--color-success);font-weight:600">—</span> days</div>
+    </div>
+    <div class="streak-bar" id="streak-bar"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:0.5rem;font-size:0.7rem;color:rgba(240,240,255,0.25)">
+      <span>30 days ago</span><span>Today</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Day detail panel -->
+<aside id="day-panel" class="day-panel" aria-label="Day detail" role="complementary">
+  <div style="padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between">
+    <h2 id="panel-date" style="font-family:var(--font-display);font-size:1rem;font-weight:700">—</h2>
+    <button id="panel-close" class="btn btn-secondary btn-sm" aria-label="Close panel">✕</button>
+  </div>
+  <div id="panel-content" style="padding:1.25rem">
+    <div class="spinner" style="margin:2rem auto"></div>
+  </div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const now = new Date();
+  let currentMonth = now.getMonth() + 1;
+  let currentYear = now.getFullYear();
+  let currentDeckId = '';
+  let calendarData = null;
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Load decks for filter
+  try {
+    const { decks } = await apiGet('/api/decks');
+    const sel = document.getElementById('deck-filter');
+    decks.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id; opt.textContent = d.title;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => { currentDeckId = sel.value; loadCalendar(); });
+  } catch {}
+
+  // Nav buttons
+  const MIN_OFFSET = -3, MAX_OFFSET = 6;
+  document.getElementById('prev-month').addEventListener('click', () => {
+    const base = new Date(); base.setMonth(base.getMonth() - 1);
+    const offsetMonths = (currentYear - now.getFullYear()) * 12 + (currentMonth - (now.getMonth() + 1));
+    if (offsetMonths <= MIN_OFFSET) return;
+    currentMonth--; if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+    loadCalendar();
+  });
+  document.getElementById('next-month').addEventListener('click', () => {
+    const offsetMonths = (currentYear - now.getFullYear()) * 12 + (currentMonth - (now.getMonth() + 1));
+    if (offsetMonths >= MAX_OFFSET) return;
+    currentMonth++; if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+    loadCalendar();
+  });
+
+  // Panel close
+  document.getElementById('panel-close').addEventListener('click', closePanel);
+
+  async function loadCalendar() {
+    document.getElementById('month-label').textContent = `${monthNames[currentMonth-1]} ${currentYear}`;
+    try {
+      const url = `/api/calendar?month=${currentMonth}&year=${currentYear}${currentDeckId?'&deck_id='+currentDeckId:''}`;
+      calendarData = await apiGet(url);
+      renderCalendar(calendarData);
+      updateTodayStats(calendarData.today_stats);
+      await loadStreakBar();
+    } catch (err) {
+      toast.error('Failed to load calendar.');
+    }
+  }
+
+  function renderCalendar(data) {
+    const grid = document.getElementById('calendar-days');
+    const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Maps for quick lookup
+    const futureMap = {};
+    (data.future_days || []).forEach(d => { futureMap[d.date] = d; });
+    const pastMap = {};
+    (data.past_days || []).forEach(d => { pastMap[d.date] = d; });
+
+    let html = '';
+    // Empty cells for first week
+    for (let i = 0; i < firstDay; i++) {
+      html += '<div class="calendar-day empty"></div>';
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isToday = dateStr === todayStr;
+      const future = futureMap[dateStr];
+      const past = pastMap[dateStr];
+
+      let cls = 'calendar-day';
+      let badge = '';
+      let dots = '';
+
+      if (isToday) {
+        cls += ' today animate-today-pulse';
+        const due = calendarData.today_stats.due_count;
+        if (due > 0) badge = `<span class="day-badge">${due}</span>`;
+      } else if (future) {
+        cls += ' has-cards';
+        badge = `<span class="day-badge">${future.count}</span>`;
+      } else if (past) {
+        const ret = past.reviewed > 0 ? past.correct / past.reviewed : 0;
+        cls += ret >= 0.8 ? ' past-good' : ret >= 0.5 ? ' past-medium' : ' past-poor';
+        const dotColor = ret >= 0.8 ? 'var(--color-success)' : ret >= 0.5 ? 'var(--color-warning)' : 'var(--color-danger)';
+        dots = `<div style="width:5px;height:5px;border-radius:50%;background:${dotColor}"></div>`;
+      }
+
+      html += `<div class="${cls}" data-date="${dateStr}" onclick="openDayPanel('${dateStr}','${isToday?'today':future?'future':'past'}')" aria-label="Day ${day}" role="button" tabindex="0">
+        <span class="day-number">${day}</span>
+        ${badge}
+        ${dots}
+      </div>`;
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function updateTodayStats(stats) {
+    if (!stats) return;
+    document.getElementById('today-due').textContent = stats.due_count;
+    document.getElementById('today-reviewed').textContent = stats.reviewed_today;
+    document.getElementById('today-week').textContent = stats.due_this_week;
+    document.getElementById('today-month').textContent = stats.due_this_month;
+  }
+
+  async function loadStreakBar() {
+    // Build 30-day streak bar from past review data
+    const bar = document.getElementById('streak-bar');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const past30 = (calendarData?.past_days || []).reduce((m, d) => { m[d.date] = d.reviewed; return m; }, {});
+
+    let streakCount = 0;
+    let html = '';
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const count = past30[key] || 0;
+      if (i === 0) {
+        // Today
+        const todayReviewed = calendarData?.today_stats?.reviewed_today || 0;
+        const cls = todayReviewed > 5 ? 'active-high' : todayReviewed > 0 ? 'active-mid' : '';
+        if (todayReviewed > 0) streakCount++;
+        html += `<div class="streak-dot ${cls}" title="Today: ${todayReviewed} reviews"></div>`;
+      } else {
+        const cls = count > 5 ? 'active-high' : count > 0 ? 'active-mid' : '';
+        html += `<div class="streak-dot ${cls}" title="${key}: ${count} reviews"></div>`;
+      }
+    }
+    bar.innerHTML = html;
+    document.getElementById('streak-count').textContent = streakCount;
+  }
+
+  // ── Day Panel ──────────────────────────────────────────────────────────
+
+  async function openDayPanel(dateStr, mode) {
+    const panel = document.getElementById('day-panel');
+    const dateEl = document.getElementById('panel-date');
+    const content = document.getElementById('panel-content');
+
+    const [year, month, day] = dateStr.split('-').map(Number);
+    dateEl.textContent = new Date(year, month-1, day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    content.innerHTML = '<div class="spinner" style="margin:2rem auto"></div>';
+    panel.classList.add('open');
+
+    const deckParam = currentDeckId ? `&deck_id=${currentDeckId}` : '';
+    const type = mode === 'past' ? 'reviewed' : 'due';
+    try {
+      const data = await apiGet(`/api/calendar/cards?date=${dateStr}&type=${type}${deckParam}`);
+      renderPanelContent(data, mode);
+    } catch (err) {
+      content.innerHTML = '<p style="color:rgba(240,240,255,0.4)">Failed to load details.</p>';
+    }
+  }
+
+  function renderPanelContent(data, mode) {
+    const content = document.getElementById('panel-content');
+    const cards = data.cards || [];
+
+    if (!cards.length) {
+      content.innerHTML = '<div class="empty-state" style="padding:2rem 0"><div class="empty-state-icon" style="font-size:2rem">✓</div><p style="color:rgba(240,240,255,0.4)">No cards for this day.</p></div>';
+      return;
+    }
+
+    const ratingLabels = ['Again','Hard','Good','Easy'];
+    const ratingColors = ['var(--color-danger)','var(--color-warning)','var(--color-primary)','var(--color-success)'];
+    const masteryColors = { mastered: 'var(--color-success)', learning: 'var(--color-warning)', new: 'rgba(240,240,255,0.4)' };
+
+    let html = `<div style="margin-bottom:1rem;font-size:0.8rem;color:rgba(240,240,255,0.4)">${cards.length} card${cards.length!==1?'s':''}</div>`;
+
+    if (mode === 'past') {
+      html += cards.map(c => `
+        <div style="background:var(--color-surface-2);border:1px solid rgba(255,255,255,0.05);border-radius:var(--radius-md);padding:0.85rem;margin-bottom:0.5rem">
+          <div style="font-size:0.85rem;font-weight:500;margin-bottom:0.3rem">${escHtml(c.front)}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="badge badge-neutral">${escHtml(c.topic)}</span>
+            <span style="font-size:0.78rem;font-weight:600;color:${ratingColors[c.rating]}">${ratingLabels[c.rating]}</span>
+          </div>
+        </div>`).join('');
+    } else {
+      html += cards.map(c => `
+        <div style="background:var(--color-surface-2);border:1px solid rgba(255,255,255,0.05);border-radius:var(--radius-md);padding:0.85rem;margin-bottom:0.5rem">
+          <div style="font-size:0.85rem;font-weight:500;margin-bottom:0.3rem">${escHtml(c.front)}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.4rem">
+            <div style="display:flex;gap:0.35rem">
+              <span class="badge badge-neutral">${escHtml(c.topic)}</span>
+              <span class="badge" style="background:rgba(255,255,255,0.05);color:${masteryColors[c.mastery_state]}">${c.mastery_state}</span>
+            </div>
+            ${c.deck?`<span style="font-size:0.7rem;color:rgba(240,240,255,0.3)">${escHtml(c.deck.title)}</span>`:''}
+          </div>
+        </div>`).join('');
+
+      if (data.today_stats) {
+        html = `<div style="background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:var(--radius-md);padding:0.85rem;margin-bottom:1rem;font-size:0.85rem">
+          <strong style="color:var(--color-primary)">Today:</strong> ${data.today_stats.due_count} due · ${data.today_stats.reviewed_today} reviewed
+        </div>` + html;
+      }
+    }
+
+    content.innerHTML = html;
+  }
+
+  function closePanel() {
+    document.getElementById('day-panel').classList.remove('open');
+  }
+
+  function escHtml(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Initial load
+  loadCalendar();
+});
+</script>
+{% endblock %}

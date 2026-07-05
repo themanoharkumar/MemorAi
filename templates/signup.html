@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up — MemorAI{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 440px; padding-top: 5rem">
+  <div class="card animate-fade-in" style="padding: 2.5rem 2rem">
+    <div style="text-align: center; margin-bottom: 2rem">
+      <h1 style="font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem" class="text-gradient">Get Started</h1>
+      <p style="font-size: 0.85rem; color: rgba(240, 240, 255, 0.45)">Create a free account to start learning</p>
+    </div>
+
+    <form id="signup-form" style="display: flex; flex-direction: column; gap: 1.25rem">
+      <div>
+        <label for="username" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em">Username</label>
+        <input type="text" id="username" class="input" placeholder="study_hero" required minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_\-]+$" title="Letters, numbers, underscores and hyphens only." />
+      </div>
+
+      <div>
+        <label for="email" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em">Email Address</label>
+        <input type="email" id="email" class="input" placeholder="hero@study.com" required maxlength="50" />
+      </div>
+
+      <div>
+        <label for="password" style="display: block; font-size: 0.75rem; font-weight: 500; color: rgba(240, 240, 255, 0.5); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em">Password</label>
+        <input type="password" id="password" class="input" placeholder="Min. 6 characters" required minlength="6" maxlength="32" />
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem" id="submit-btn">
+        Create Account
+      </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: rgba(240, 240, 255, 0.4)">
+      Already have an account? <a href="/login" style="color: var(--color-primary); font-weight: 500; text-decoration: underline">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  const u = document.getElementById('username').value;
+  const em = document.getElementById('email').value;
+  const p = document.getElementById('password').value;
+
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, email: em, password: p })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to create account.');
+    }
+
+    toast.success('Account created! Please sign in.');
+    setTimeout(() => { window.location.href = '/login'; }, 1000);
+  } catch (err) {
+    toast.error(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+});
+</script>
+{% endblock %}

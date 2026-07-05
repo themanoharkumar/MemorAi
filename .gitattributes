@@ -1,0 +1,19 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Force LF line endings for code, templates, and config files
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.txt text eol=lf
+
+# Denote binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.ico binary

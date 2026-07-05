@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Progress Dashboard — MemorAI{% endblock %}
+{% block description %}A centralized view of your learning statistics, mastery percentages, and study schedule across all decks.{% endblock %}
+
+{% block content %}
+<div class="container animate-fade-in">
+  <div class="page-header" style="margin-bottom: 2rem">
+    <h1 class="page-title">Progress Center</h1>
+    <p class="page-subtitle">Your learning statistics and spaced repetition analytics.</p>
+  </div>
+
+  <!-- Global Stats Row -->
+  <div class="grid-4" style="margin-bottom: 2rem">
+    <div class="stat-card">
+      <div class="stat-label">Total Decks</div>
+      <div class="stat-value" id="global-decks">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Cards</div>
+      <div class="stat-value" id="global-cards">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Mastered</div>
+      <div class="stat-value" id="global-mastered" style="color: var(--color-success)">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Due Today</div>
+      <div class="stat-value" id="global-due" style="color: var(--color-secondary)">—</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom: 2rem">
+    <!-- Global Mastery Chart -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between">
+      <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4); margin-bottom: 1.5rem">Global Mastery</h2>
+      <div style="display: flex; align-items: center; gap: 2rem; justify-content: center; padding: 1rem 0">
+        <svg width="120" height="120" viewBox="0 0 120 120" style="flex-shrink: 0">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="var(--color-surface-3)" stroke-width="12"/>
+          <circle id="global-ring-fill" cx="60" cy="60" r="48" fill="none" stroke="var(--color-primary)" stroke-width="12" stroke-dasharray="0 302" stroke-linecap="round" transform="rotate(-90 60 60)" style="transition: stroke-dasharray 0.8s ease"/>
+          <text x="60" y="66" text-anchor="middle" fill="var(--color-foreground)" font-family="Syne,sans-serif" font-size="22" font-weight="700" id="global-ring-pct">—</text>
+        </svg>
+        <div style="display: flex; flex-direction: column; gap: 0.8rem">
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-success)"></div><span style="font-size: 0.8rem" id="lbl-mastered">— Mastered</span></div>
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-warning)"></div><span style="font-size: 0.8rem" id="lbl-shaky">— Shaky</span></div>
+          <div style="display: flex; align-items: center; gap: 0.5rem"><div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-surface-3)"></div><span style="font-size: 0.8rem" id="lbl-new">— New</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Streaks -->
+    <div class="card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem">
+        <h2 style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(240, 240, 255, 0.4)">Study Consistency</h2>
+        <div style="font-size: 0.8rem; color: rgba(240, 240, 255, 0.4)">Active Streak: <span id="global-streak" style="color: var(--color-success); font-weight: 600">—</span> days</div>
+      </div>
+      <div id="global-streak-bar" class="streak-bar" style="margin-bottom: 1.5rem"></div>
+      
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: rgba(240, 240, 255, 0.4)">
+        <span>Retention Rate: <strong id="global-retention" style="color: var(--color-foreground)">—</strong></span>
+        <span>Reviewed Today: <strong id="global-reviewed" style="color: var(--color-foreground)">—</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study suggestions -->
+  <div class="card" id="suggest-card" style="display: none; background: linear-gradient(135deg, rgba(108, 99, 255, 0.08), rgba(0, 210, 255, 0.03)); border-color: rgba(108, 99, 255, 0.2)">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap">
+      <div>
+        <h2 style="font-size: 1.1rem; font-family: var(--font-display); font-weight: 700; margin-bottom: 0.3rem">Ready for a study session?</h2>
+        <p style="font-size: 0.875rem; color: rgba(240, 240, 255, 0.5)">You have cards waiting for review. Keep your streak alive!</p>
+      </div>
+      <a href="/decks" class="btn btn-primary">Start Review Session</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const stats = await apiGet('/api/stats/global');
+    
+    // Summary
+    document.getElementById('global-decks').textContent = stats.total_decks;
+    document.getElementById('global-cards').textContent = stats.total_cards;
+    document.getElementById('global-mastered').textContent = stats.mastered;
+    document.getElementById('global-due').textContent = stats.due_today;
+    
+    // Mastery Ring
+    const circ = 2 * Math.PI * 48;
+    const fill = (stats.mastered / (stats.total_cards || 1)) * circ;
+    document.getElementById('global-ring-fill').setAttribute('stroke-dasharray', `${fill} ${circ}`);
+    document.getElementById('global-ring-pct').textContent = `${stats.mastery_percent}%`;
+    
+    document.getElementById('lbl-mastered').textContent = `${stats.mastered} Mastered`;
+    document.getElementById('lbl-shaky').textContent = `${stats.shaky} Shaky`;
+    document.getElementById('lbl-new').textContent = `${stats.new_cards} New`;
+    
+    // Streaks & Retention
+    document.getElementById('global-streak').textContent = stats.streak;
+    document.getElementById('global-retention').textContent = formatPercent(stats.retention_rate);
+    document.getElementById('global-reviewed').textContent = stats.reviewed_today;
+
+    if (stats.due_today > 0) {
+      document.getElementById('suggest-card').style.display = 'block';
+    }
+
+    // Build visual streak dots (overall 30-day activity)
+    // We can fetch from calendar endpoint for more precision, or approximate
+    const calData = await apiGet(`/api/calendar`);
+    const streakBar = document.getElementById('global-streak-bar');
+    const pastDays = (calData.past_days || []).reduce((acc, d) => { acc[d.date] = d.reviewed; return acc; }, {});
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    let html = '';
+    const today = new Date(); today.setHours(0,0,0,0);
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const count = key === todayStr ? calData.today_stats.reviewed_today : (pastDays[key] || 0);
+      const cls = count > 5 ? 'active-high' : count > 0 ? 'active-mid' : '';
+      html += `<div class="streak-dot ${cls}" title="${key}: ${count} reviews"></div>`;
+    }
+    streakBar.innerHTML = html;
+
+  } catch (err) {
+    toast.error('Failed to load progress analytics.');
+  }
+});
+</script>
+{% endblock %}
