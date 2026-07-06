@@ -200,4 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   }
+
+  // Expose current card function globally for tutor integrations
+  window.getCurrentCard = () => cards[currentIndex];
 });

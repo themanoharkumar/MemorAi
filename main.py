@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routers import auth, ingest, decks, study, review, stats, schedule, calendar
+from routers import auth, ingest, decks, study, review, stats, schedule, calendar, tutor
 from services.auth import UnauthenticatedException, get_current_user_page, get_current_user_optional
 from models.models import User
 
@@ -54,6 +54,7 @@ app.include_router(review.router)
 app.include_router(stats.router)
 app.include_router(schedule.router)
 app.include_router(calendar.router)
+app.include_router(tutor.router)
 
 
 # ── Page Routes ───────────────────────────────────────────────────────────────

@@ -43,6 +43,40 @@
   </div>
 </nav>
 
+{% if user %}
+<!-- Floating AI Tutor Toggle Button (displayed dynamically if DECK_ID exists in page context) -->
+<button id="tutor-toggle-btn" class="tutor-toggle-btn animate-fade-in" style="display: none" aria-label="Open AI Tutor">
+  <span style="font-size: 1rem">🧠</span> Ask Tutor
+</button>
+
+<!-- Slide-out AI Tutor Sidebar -->
+<aside id="tutor-sidebar" class="tutor-sidebar" aria-label="AI Tutor Chat">
+  <div class="tutor-sidebar-header">
+    <div style="display: flex; align-items: center; gap: 0.6rem">
+      <span style="font-size: 1.35rem">🧠</span>
+      <div>
+        <h3 style="font-size: 0.88rem; font-weight: 700; margin: 0; line-height: 1.2">AI Study Tutor</h3>
+        <p style="font-size: 0.68rem; color: var(--color-success); margin: 0; padding-top: 1px">Active & Scoped to Deck</p>
+      </div>
+    </div>
+    <button id="tutor-close-btn" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.45rem">✕</button>
+  </div>
+
+  <!-- Message logs -->
+  <div id="tutor-messages" class="tutor-messages">
+    <div class="tutor-msg tutor-msg-bot">
+      Hello! I'm your AI study assistant. Ask me anything about the flashcards in this deck! I can clarify answers, explain concepts with analogies, or generate quick practice questions.
+    </div>
+  </div>
+
+  <!-- Input form -->
+  <form id="tutor-input-form" class="tutor-input-form">
+    <input type="text" id="tutor-input" placeholder="Ask a question about this deck..." required autocomplete="off" />
+    <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.4rem 0.75rem; flex-shrink: 0">Send</button>
+  </form>
+</aside>
+{% endif %}
+
 <!-- ── Toast container ── -->
 <div id="toast-container" class="toast-container"></div>
 
@@ -53,6 +87,92 @@
 
 <script src="/static/js/app.js"></script>
 {% if user %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if we are inside a specific deck page
+  if (typeof DECK_ID !== 'undefined') {
+    const toggleBtn = document.getElementById('tutor-toggle-btn');
+    const closeBtn = document.getElementById('tutor-close-btn');
+    const sidebar = document.getElementById('tutor-sidebar');
+    const form = document.getElementById('tutor-input-form');
+    const input = document.getElementById('tutor-input');
+    const msgList = document.getElementById('tutor-messages');
+    
+    let chatHistory = [];
+
+    // Show floating toggle button
+    toggleBtn.style.display = 'inline-flex';
+
+    // Toggle actions
+    toggleBtn.addEventListener('click', () => sidebar.classList.add('open'));
+    closeBtn.addEventListener('click', () => sidebar.classList.remove('open'));
+
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+
+      // Append user bubble
+      appendMessage('user', message);
+
+      // Append bot thinking bubble
+      const thinkingEl = appendMessage('bot', '<span class="spinner" style="display:inline-block;width:12px;height:12px;margin-right:0.35rem"></span>Thinking...');
+
+      try {
+        const payload = {
+          deck_id: DECK_ID,
+          message: message,
+          history: chatHistory.slice(-10) // Send last 10 messages for context
+        };
+
+        const data = await apiPost('/api/tutor/chat', payload);
+        thinkingEl.remove();
+
+        // Append bot answer
+        appendMessage('bot', data.response);
+
+        // Update history
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'model', content: data.response });
+
+      } catch (err) {
+        thinkingEl.remove();
+        appendMessage('bot', 'Sorry, I failed to generate a response. Please check your API connection and try again.');
+      }
+    });
+
+    function appendMessage(role, text) {
+      const el = document.createElement('div');
+      el.className = `tutor-msg tutor-msg-${role === 'user' ? 'user' : 'bot'}`;
+      el.innerHTML = formatMarkdownSimple(text);
+      msgList.appendChild(el);
+      msgList.scrollTop = msgList.scrollHeight;
+      return el;
+    }
+
+    function formatMarkdownSimple(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);background:rgba(255,255,255,0.06);padding:2px 4px;border-radius:3px">$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // Expose tutor chat triggering helper globally (e.g. for study room "Ask Tutor" buttons)
+    window.askTutorWithPrompt = function(promptText) {
+      sidebar.classList.add('open');
+      input.value = promptText;
+      input.focus();
+    };
+  }
+});
+</script>
 <script>
 document.getElementById('logout-btn').addEventListener('click', async () => {
   try {

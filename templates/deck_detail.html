@@ -167,7 +167,8 @@
 
 {% block scripts %}
 <script>
-const DECK_ID = "{{ deck_id }}";
+window.DECK_ID = "{{ deck_id }}";
+const DECK_ID = window.DECK_ID;
 let allCards = [];
 
 // Global trigger functions for onclick attributes

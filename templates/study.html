@@ -52,9 +52,12 @@
           <div class="flashcard-question" id="card-question"></div>
         </div>
         <!-- Back -->
-        <div class="flashcard-face flashcard-back">
-          <div class="flashcard-label">Answer</div>
-          <div class="flashcard-answer" id="card-answer"></div>
+        <div class="flashcard-face flashcard-back" style="justify-content: space-between; padding: 2rem 2rem 1.5rem">
+          <div class="flashcard-label" style="margin-bottom: 0">Answer</div>
+          <div class="flashcard-answer" id="card-answer" style="flex-grow: 1; display: flex; align-items: center; justify-content: center"></div>
+          <button id="ask-tutor-card-btn" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; align-self: center" onclick="event.stopPropagation(); triggerCardTutorChat()">
+            💡 Ask Tutor to explain
+          </button>
         </div>
       </div>
     </div>
@@ -113,8 +116,14 @@
     if (el && data.deck) el.textContent = data.deck.title;
   }).catch(() => {});
 
-  // Update progress bar when cards load
-  const origRender = window._renderCard;
+  function triggerCardTutorChat() {
+    if (typeof window.getCurrentCard === 'function') {
+      const card = window.getCurrentCard();
+      if (card && window.askTutorWithPrompt) {
+        window.askTutorWithPrompt(`Explain this card:\nQuestion: "${card.front}"\nAnswer: "${card.back}"`);
+      }
+    }
+  }
 </script>
 <script src="/static/js/flashcard.js"></script>
 {% endblock %}
